@@ -138,17 +138,29 @@ describe('Testing win-NEAT for: ',function(){
 
     });
 
-    it('validating generated genomes match pre-defined schema',function(done){
+    it('validating generated genomes match forced parent choices',function(done){
 
     	//use a single object as a seed
-    	var seeds = [ngSeed];
+
+    	var second = JSON.parse(JSON.stringify(ngSeed));
+    	second.wid = "54321";
+
+    	var seeds = [ngSeed, second];
 
     	//how many to generate
     	var offcount = 10;
 
+    	var chosenIx = 1;
+
+    	//force the second parent to be always chosen
+    	var force = [];
+    	//add a list of lists with a single chosen ix inside
+    	for(var i=0; i < offcount; i++)
+    		force.push([chosenIx]);
+
     	//win-gen should default session, but this will ensure a common session we can check for new nodes and connections
     	//after the creation step
-    	var session = {};
+    	var session = {forceParents: force};
 
     	//now we call asking for 
     	qBackboneResponse("generator:createArtifacts", "NEATGenotype", offcount, seeds, session)
@@ -157,6 +169,19 @@ describe('Testing win-NEAT for: ',function(){
     			//evolution started!
     			backLog('\tFinished creating neat genoems: '.cyan, util.inspect(artifacts, false,10));
     			backLog('\tSession: ', session);
+
+    			var offspring = artifacts.offspring;
+
+    			for(var i=0; i < offcount; i++){
+    				var parents = offspring[i].parents;
+    				// backLog("Off parents: ".red, parents);
+    				//should only be one parent (the chosen one)
+    				parents.length.should.equal(1);
+    				//the parents wid should equal the chosen seeds wid
+    				parents[0].should.equal(seeds[chosenIx].wid);
+    			}
+
+
 		    	done();   
     		})
     		.fail(function(err)

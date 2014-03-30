@@ -1,14 +1,14 @@
 {
   "name": "win-neat",
-  "version": "0.0.1",
+  "version": "0.0.1-1",
   "description": "WIN Module for generating NEAT Genotypes that encode cppns or other artificial neural networks.",
   "repo": "OptimusLime/win-neat",
   "scripts": [
     "lib/win-neat.js"
   ],
   "main": "lib/win-neat.js",
-  "dependencies" : {
-    "optimuslime/neatjs" : "*",
-    "optimuslime/win-utils" : "*"
+  "dependencies": {
+    "optimuslime/neatjs": "*",
+    "optimuslime/win-utils": "*"
   }
 }

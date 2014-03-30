@@ -1,23 +1,23 @@
 {
   "name": "win-neat",
-  "version": "0.0.1",
+  "version": "0.0.1-1",
   "description": "WIN Module for generating NEAT Genotypes that encode cppns or other artificial neural networks.",
   "repository": {
     "url": "https://github.com/OptimusLime/win-neat",
     "type": "git"
   },
   "main": "lib/win-neat.js",
-  "dependencies" : {
-    "neatjs" : "*",
-    "win-utils" : "*"
+  "dependencies": {
+    "neatjs": "*",
+    "win-utils": "*"
   },
-  "devDependencies" : {
-    "mocha" : "*",
-    "should" : "*",
-    "colors" : "*",
-    "q" : "*",
-    "win-backbone" : "*",
-    "win-schema" : "*",
-    "win-gen" : "*"
+  "devDependencies": {
+    "mocha": "*",
+    "should": "*",
+    "colors": "*",
+    "q": "*",
+    "win-backbone": "*",
+    "win-schema": "*",
+    "win-gen": "*"
   }
 }
