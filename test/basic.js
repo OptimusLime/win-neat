@@ -12,6 +12,9 @@ var seed = require('./seed1.js');
 var ngSeed= seed.genome;
 
 var winneat = require('..');
+var neatParameters = require('neatjs').neatParameters;
+
+
 var wMath = require('win-utils').math;
 var winback = require('win-backbone');
 
@@ -25,7 +28,8 @@ var emptyModule =
 	eventCallbacks : function(){ return {}; },
 	requiredEvents : function() {
 		return [
-			"generator:createArtifacts"
+            "generator:createArtifacts",
+			"encoding:NEATGenotype-measureGenomeDistances"
 			];
 	},
 	initialize : function(done)
@@ -74,6 +78,9 @@ var qBackboneResponse = function()
     return defer.promise;
 }
 
+var np = new neatParameters();
+
+
 describe('Testing win-NEAT for: ',function(){
 
     //we need to start up the WIN backend
@@ -95,6 +102,7 @@ describe('Testing win-NEAT for: ',function(){
 			"global" : {
 			},
 			"win-neat" : {
+                neatParameters : np,
 				options : {
 					initialMutationCount : 0, 
 					postMutationCount : 0
@@ -107,7 +115,7 @@ describe('Testing win-NEAT for: ',function(){
 				]
 				,validateParents : true
 				,validateOffspring : true
-				,logLevel : backbone.testing
+				// ,logLevel : backbone.testing
 			},
 			"win-schema" : {
 				multipleErrors : true
@@ -138,6 +146,109 @@ describe('Testing win-NEAT for: ',function(){
 
     });
 
+
+    it('validating genome distance calculation', function(done){
+
+        var genomes = {};
+
+        var seed = JSON.parse(JSON.stringify(ngSeed));
+        var second = JSON.parse(JSON.stringify(ngSeed));
+
+
+
+        //we'll make only 1 difference for the genomes -- we'll add a connection
+
+        var nodes = second.nodes;
+        var secondConn = second.connections;
+        
+        var maxSelection = 100;
+        var selectCount =0; 
+
+        var addCount = 1 + wMath.next(3);
+
+        if(nodes.length ==1)
+        {    
+            done(new Error("Need a seed with more than one node. Infinite loop otherwise."));
+            return;
+        }
+        
+        var added = addCount;
+        //try to look for a new connection to add
+        while(added && selectCount++ < maxSelection)
+        {
+            //choose random notes
+            var fIx = wMath.next(nodes.length), sIx;
+
+            //select another node
+            while((sIx = wMath.next(nodes.length)) == fIx){}
+
+            var n1 = nodes[fIx], n2 = nodes[sIx];
+
+            var seen = false;
+            secondConn.forEach(function(conn)
+            {
+                if(conn.sourceID == n1.gid && conn.targetID == n2.gid)
+                    seen = true;
+            });
+
+            if(!seen)
+            {
+                //add connection between nodes
+                var conn = {gid: Date.now().toString(), sourceID: n1.gid, targetID: n2.gid};
+                secondConn.push(conn);
+                added--;
+            }
+        }
+
+        //so if we wanted to add 3 connections, and only added 1, then we would have 2 left inside added
+        //therefore secondConn.length == seed.conenctions.length + (3-2) == seed.connections.length + 1 -- which is true since we only added 1
+        var totalAdded = addCount - added;
+
+        //should have totalAdded more -- but if for some reason we couldn't add anything, added would be what's left to add
+        secondConn.length.should.equal(seed.connections.length + totalAdded);
+
+        //these will be converted into real objects during genome calculations
+        genomes["first"] = seed;
+        genomes["second"] = second;
+
+        //note that wid of the inner objecets DOESN'T matter, but the genomemap sent in matters the most
+        qBackboneResponse("encoding:NEATGenotype-measureGenomeDistances", genomes, 10)
+            .then(function(distanceMeasurements)
+            {
+                //evolution started!
+                backLog('\tFinished measuring distance for neat genoems: '.cyan, util.inspect(distanceMeasurements, false,10));
+
+                var distances = distanceMeasurements.genomeDistances;
+                for(var wid in distances)
+                {
+                    var dObject = distances[wid];
+
+                    //distance between object should be however many connections we added * the excess coeff
+                    dObject.distance.should.equal(totalAdded*np.compatibilityExcessCoeff);
+                }
+
+                //the only thing in compat that will matter is excess -- all else is equal between the two genomes
+                distanceMeasurements.sumDistance.should.equal(2*totalAdded*np.compatibilityExcessCoeff);
+                distanceMeasurements.averageDistance.should.equal(totalAdded*np.compatibilityExcessCoeff);
+                distanceMeasurements.genomeCount.should.equal(2);
+
+                done();   
+            })
+            .fail(function(err)
+            {
+                backLog("Distance failure: ", util.inspect(err.errors, false,10));
+                backLog("Stack failure: ", err.stack);
+
+                if(err.errno)
+                    done(err);
+                else
+                    done(new Error(err.message));
+            });
+
+
+
+    })
+
     it('validating generated genomes match forced parent choices',function(done){
 
     	//use a single object as a seed
@@ -167,7 +278,7 @@ describe('Testing win-NEAT for: ',function(){
     		.then(function(artifacts)
     		{
     			//evolution started!
-    			backLog('\tFinished creating neat genoems: '.cyan, util.inspect(artifacts, false,10));
+    			backLog('\tFinished creating neat genoems: '.cyan, util.inspect(artifacts, false,1));
     			backLog('\tSession: ', session);
 
     			var offspring = artifacts.offspring;
